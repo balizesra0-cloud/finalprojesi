@@ -3,7 +3,14 @@ import os
 import logging
 import numpy as np
 from PIL import Image
-import tensorflow as tf
+try:
+    import tflite_runtime.interpreter as tflite
+except ImportError:
+    try:
+        import tensorflow.lite as tflite
+    except ImportError:
+        import tensorflow as tf
+        tflite = tf.lite
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,18 +38,23 @@ if not os.path.exists("static"):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Load model globally
-MODEL_PATH = "final_model.h5"
-model = None
+MODEL_PATH = "final_model.tflite"
+interpreter = None
+input_details = None
+output_details = None
 
 @app.on_event("startup")
 def load_model():
-    global model
+    global interpreter, input_details, output_details
     if not os.path.exists(MODEL_PATH):
         logging.error(f"Model file {MODEL_PATH} not found in root directory!")
         raise RuntimeError(f"Model file {MODEL_PATH} not found in root directory!")
     try:
-        logging.info("Loading TensorFlow Keras model...")
-        model = tf.keras.models.load_model(MODEL_PATH)
+        logging.info("Loading TFLite model...")
+        interpreter = tflite.Interpreter(model_path=MODEL_PATH)
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
         logging.info("Model loaded successfully!")
     except Exception as e:
         logging.error(f"Error loading model: {e}", exc_info=True)
@@ -58,8 +70,8 @@ def read_root():
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
-    global model
-    if model is None:
+    global interpreter, input_details, output_details
+    if interpreter is None:
         raise HTTPException(status_code=503, detail="Model henüz yüklenmedi, lütfen daha sonra tekrar deneyin.")
 
     # 1. Dosya Uzantısı Kontrolü
@@ -98,8 +110,10 @@ async def predict(file: UploadFile = File(...)):
         img_array = np.array(img_resized, dtype=np.float32) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
         
-        # Run prediction
-        prediction = model.predict(img_array)
+        # Run prediction using TFLite interpreter
+        interpreter.set_tensor(input_details[0]['index'], img_array)
+        interpreter.invoke()
+        prediction = interpreter.get_tensor(output_details[0]['index'])
         
         benign_prob = float(prediction[0][0])
         melanoma_prob = float(prediction[0][1])

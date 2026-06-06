@@ -1,0 +1,5 @@
+.venv
+.git
+app.log
+final_model.h5
+convert_model.py
