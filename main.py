@@ -19,13 +19,17 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 # Setup logging
+log_handlers = [logging.StreamHandler()]
+if not os.environ.get("VERCEL"):
+    try:
+        log_handlers.append(logging.FileHandler("app.log", encoding="utf-8"))
+    except Exception:
+        pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("app.log", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
+    handlers=log_handlers
 )
 
 # TensorFlow warnings to a minimum
@@ -34,9 +38,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 app = FastAPI(title="Melanoma Detection API")
 
 # Mount static files directory
-# We check if static directory exists; if not, we create it
+# We check if static directory exists; if not, we try to create it safely
 if not os.path.exists("static"):
-    os.makedirs("static")
+    try:
+        os.makedirs("static")
+    except Exception:
+        pass
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
