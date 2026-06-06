@@ -1,4 +1,4 @@
-tflite-runtime>=2.14.0
+ai-edge-litert
 fastapi>=0.100.0
 uvicorn[standard]>=0.22.0
 pillow>=10.0.0
