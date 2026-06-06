@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DermoscopyAI - Yapay Zeka ile Melanom Analiz Sistemi</title>
+    <meta name="description" content="TensorFlow/Keras modelimizi kullanarak deri lezyonlarını analiz eden ve melanom olasılığını değerlendiren yapay zeka web uygulaması.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Background decorative glows -->
+        <div class="glow-bg glow-primary"></div>
+        <div class="glow-bg glow-secondary"></div>
+
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Medical cross magnifying glass with AI sparkle -->
+                        <circle cx="9" cy="9" r="6"></circle>
+                        <line x1="20" y1="20" x2="13.5" y2="13.5"></line>
+                        <line x1="9" y1="6" x2="9" y2="12"></line>
+                        <line x1="6" y1="9" x2="12" y2="9"></line>
+                        <path d="M19 2c0 1.5 1 2.5 2.5 2.5C20 4.5 19 5.5 19 7c0-1.5-1-2.5-2.5-2.5C18 4.5 19 3.5 19 2Z" fill="currentColor" stroke="none"></path>
+                    </svg>
+                </span>
+                <div class="logo-text">
+                    <h1>DermoscopyAI</h1>
+                    <p>Yapay Zeka Destekli Deri Analizi</p>
+                </div>
+            </div>
+            <div class="status-badge" id="system-status">
+                <span class="status-dot pulsing"></span>
+                <span class="status-text">Model Aktif</span>
+            </div>
+        </header>
+
+        <!-- Main Content Layout -->
+        <main class="app-main">
+            <!-- Left Side: Upload & Input -->
+            <section class="control-panel card">
+                <div class="card-header">
+                    <h2>Görüntü Yükleme</h2>
+                    <p>Lezyonun net ve iyi aydınlatılmış bir fotoğrafını yükleyin.</p>
+                </div>
+
+                <!-- Drag & Drop Zone -->
+                <div class="drop-zone" id="drop-zone">
+                    <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg" style="display: none;">
+                    <div class="drop-zone-content" id="drop-zone-prompt">
+                        <div class="upload-icon">
+                            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                        </div>
+                        <p class="main-prompt">Görseli buraya sürükleyin veya <span class="browse-link">göz atın</span></p>
+                        <p class="sub-prompt">PNG, JPG veya JPEG (Maks. 10MB)</p>
+                    </div>
+                    <!-- Image Preview Area -->
+                    <div class="preview-container" id="preview-container" style="display: none;">
+                        <img id="image-preview" src="" alt="Yüklenen deri lezyonu önizlemesi">
+                        <button class="remove-btn" id="remove-img-btn" aria-label="Görseli Kaldır">
+                            <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button class="action-btn" id="analyze-btn" disabled>
+                    <span class="btn-text">Analiz Et</span>
+                    <span class="spinner" id="btn-spinner" style="display: none;"></span>
+                </button>
+            </section>
+
+            <!-- Right Side: Analysis Results -->
+            <section class="results-panel card">
+                <!-- Empty State -->
+                <div class="results-empty" id="results-empty">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" width="64" height="64" stroke="currentColor" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <h3>Analize Hazır</h3>
+                    <p>Sol taraftan bir görüntü yükleyip "Analiz Et" butonuna tıklayarak yapay zeka analizini başlatabilirsiniz.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div class="results-loading" id="results-loading" style="display: none;">
+                    <div class="loading-scanner">
+                        <div class="scanner-line"></div>
+                    </div>
+                    <h3>Yapay Zeka Analiz Ediyor</h3>
+                    <p>Görsel ön işlemeden geçiriliyor ve derin öğrenme modeli üzerinde çalıştırılıyor...</p>
+                </div>
+
+                <!-- Actual Results State -->
+                <div class="results-content" id="results-content" style="display: none;">
+                    <div class="card-header">
+                        <h2>Analiz Sonucu</h2>
+                        <p id="analysis-timestamp">Az önce tamamlandı</p>
+                    </div>
+
+                    <!-- Diagnosis Badge -->
+                    <div class="diagnosis-card" id="diagnosis-card">
+                        <div class="diagnosis-icon" id="diagnosis-icon">
+                            <!-- SVG dynamically updated in JS -->
+                        </div>
+                        <div class="diagnosis-text-wrapper">
+                            <span class="label-mini">Teşhis</span>
+                            <span class="diagnosis-value" id="diagnosis-value">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Score (Gauge Chart) -->
+                    <div class="gauge-section">
+                        <div class="gauge-container">
+                            <svg class="gauge" viewBox="0 0 120 120">
+                                <circle class="gauge-base" cx="60" cy="60" r="50"></circle>
+                                <circle class="gauge-progress" id="gauge-progress-circle" cx="60" cy="60" r="50"></circle>
+                            </svg>
+                            <div class="gauge-center">
+                                <span class="gauge-percent" id="gauge-percent-value">0%</span>
+                                <span class="gauge-label">Güven Oranı</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Probabilities Breakdown -->
+                    <div class="breakdown-section">
+                        <h3>Sınıf Olasılıkları</h3>
+                        <div class="breakdown-item">
+                            <div class="breakdown-header">
+                                <span class="class-name">Melanom (Kötü Huylu)</span>
+                                <span class="class-val" id="prob-melanoma">0%</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-bar bar-melanoma" id="bar-melanoma" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-header">
+                                <span class="class-name">Benign (İyi Huylu)</span>
+                                <span class="class-val" id="prob-benign">0%</span>
+                            </div>
+                            <div class="progress-track">
+                                <div class="progress-bar bar-benign" id="bar-benign" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer / Warning Area -->
+        <footer class="app-footer">
+            <div class="warning-card">
+                <span class="warning-icon">
+                    <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </span>
+                <p class="warning-text">
+                    <strong>Önemli Uyarı:</strong> Bu sistem yalnızca ön değerlendirme amaçlıdır. Kesin tanı için uzman hekime başvurunuz. Bilgisayar destekli analizler hekim teşhisinin yerini tutamaz.
+                </p>
+            </div>
+            <div class="footer-credits">
+                <p>&copy; 2026 DermoscopyAI Melanom Analiz Sistemi. Tüm Hakları Saklıdır.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
